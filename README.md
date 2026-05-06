@@ -245,6 +245,54 @@ complete runtime, then executes the pipeline.
   - Used by `run_local_pipeline.ps1` and `run_local_pipeline.sh` to validate
     logic against real light dependencies without GPU-heavy packages.
 
+### **Docker (Linux, NVIDIA GPU)**
+
+A GPU-enabled image is provided for Linux hosts. Dependencies are installed
+from `pyproject.toml` / `poetry.lock` via `install_dependencies.sh`, and the
+CUDA 13.2 runtime comes from the PyTorch `cu132` wheels, so the container
+matches local installs and CI.
+
+1. Install the NVIDIA driver and the
+   [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+   on the host.
+1. Build the image:
+
+   ```bash
+   docker image build --tag auto-sub-gen .
+   ```
+
+1. Run it, mounting a persistent model cache and the folder holding your
+   videos:
+
+   ```bash
+   docker run --gpus all \
+     --mount='type=volume,source=auto-sub-gen,target=/app/models' \
+     --mount='type=bind,source=/path/to/videos,target=/app/input' \
+     auto-sub-gen /app/input/video.mkv
+   ```
+
+- `/app/models` is a named volume, so downloaded AI models persist between runs
+  and can be reused across invocations. Hugging Face models are stored under
+  `/app/models/huggingface` (`HF_HOME`), and audio-separator checkpoints under
+  `/app/models` (`AUDIO_SEPARATOR_MODEL_DIR`).
+- Everything after the image name is passed to `auto_subtitle.py`; use
+  `/app/input` to reference the mounted video folder.
+- The image runs as a non-root user (UID/GID 1000). If your host user differs,
+  build with `--build-arg APP_UID=$(id -u) --build-arg APP_GID=$(id -g)` so
+  subtitles written back into the bind mount are owned by you.
+- The build runs the canonical unit-test scope (`pytest -m "not e2e"`). The
+  model-downloading e2e suites are intentionally excluded and can be run against
+  the finished image with `docker run`.
+
+When reusing a models volume created by an earlier image that ran as root, its
+files are root-owned and the non-root container cannot refresh the cache.
+Re-own the volume once before running:
+
+```bash
+docker run --rm --user root --entrypoint chown \
+  -v auto-sub-gen:/app/models auto-sub-gen -R 1000:1000 /app/models
+```
+
 ## **🎮 Usage**
 
 ### **Method 1: Launcher / Drag and Drop (Recommended)**
