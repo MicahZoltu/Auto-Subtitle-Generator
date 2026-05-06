@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import math
+import shutil
 from modules import config, utils
 from modules.utils import log
 from modules.models import OPTIMIZER
@@ -37,7 +38,7 @@ def _process_separator_outputs(output_files, target_dir):
         if os.path.exists(src_path) and src_path != dst_path:
             if os.path.exists(dst_path):
                 os.remove(dst_path)
-            os.rename(src_path, dst_path)
+            shutil.move(src_path, dst_path)
 
         if "Vocals" in base:
             vocal_file = dst_path

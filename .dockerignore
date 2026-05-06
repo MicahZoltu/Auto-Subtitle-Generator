@@ -1,0 +1,14 @@
+.git
+.agent
+.github
+__pycache__
+.flake8
+mypy.ini
+install_dependencies.ps1
+run_tests_with_coverage.ps1
+docs/
+assets/
+instructions.md
+coverage.svg
+LICENSE
+README.md
